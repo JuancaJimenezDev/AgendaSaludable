@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import {prisma } from '@/lib/prisma';
-import bcrypt from 'bcrypt';
+import { prisma } from '@/lib/prisma';
 import { generarToken } from '@/utils/jwt';
+import bcrypt from 'bcrypt';
 
 export async function POST(request: Request) {
   const { correo, password } = await request.json();
@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Contraseña incorrecta' }, { status: 401 });
   }
 
-  // Genera el token JWT
-  const token = generarToken({ userId: usuario.id });
+  // Genera el token con el rol del usuario
+  const token = generarToken({ id: usuario.id, rol: usuario.rol });
 
   return NextResponse.json({ token });
 }

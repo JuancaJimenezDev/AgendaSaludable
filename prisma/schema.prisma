@@ -13,12 +13,14 @@ model Usuario {
   correo         String           @unique
   contrasena     String
   rol            Rol              @default(Cliente)
+  especialidad   String?          // Nueva columna para la especialidad
   citasCliente   Cita[]           @relation("citasCliente")
   citasMedico    Cita[]           @relation("citasMedico")
   disponibilidad Disponibilidad[]
   creadoEn       DateTime         @default(now())
   actualizadoEn  DateTime         @updatedAt
 }
+
 
 model Disponibilidad {
   id          Int        @id @default(autoincrement())

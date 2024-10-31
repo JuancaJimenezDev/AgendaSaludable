@@ -21,21 +21,32 @@ function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-
+  
       const resJson = await res.json();
-
+  
       if (!res.ok) {
         setErrorMessage(resJson.message);
       } else {
         // Almacena el token en localStorage
         localStorage.setItem('token', resJson.token);
-        router.push('/dashboard'); // Redirige a dashboard
+        
+        // Verifica el rol desde el token decodificado y redirige según el rol
+        const payload = JSON.parse(atob(resJson.token.split('.')[1]));  // Decodifica el JWT
+        
+        if (payload.rol === 'Medico') {
+          router.push('/dashboard/medico');  // Redirige a la página de disponibilidad si es Médico
+        } else if (payload.rol === 'Cliente') {
+          router.push('/dashboard/cliente');  // Redirige a la página del cliente si es Cliente
+        } else {
+          router.push('/');  // Redirige a la página principal si no tiene un rol válido
+        }
       }
     } catch (error) {
       console.error('Error en la solicitud:', error);
       setErrorMessage('Error al iniciar sesión');
     }
   };
+  
 
   return (
     <div className="h-[calc(100vh-7rem)] flex justify-center items-center">

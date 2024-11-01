@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { validarToken } from '@/utils/jwt';
 import { prisma } from '@/lib/prisma';
 
-// Crear disponibilidad (POST)
+// Create availability (POST)
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -14,20 +14,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const medicoId = payload.id;
-    const body = await req.json();
-    const { fecha, horaInicio, horaFin } = body;
+    const { fecha, horaInicio, horaFin } = await req.json();
 
     if (!fecha || !horaInicio || !horaFin) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
+    // Ensure fecha, horaInicio, and horaFin are in the correct format
+    const newFecha = new Date(fecha);
+    const newHoraInicio = new Date(`${fecha}T${horaInicio}:00`);
+    const newHoraFin = new Date(`${fecha}T${horaFin}:00`);
+
     const nuevaDisponibilidad = await prisma.disponibilidad.create({
       data: {
-        medicoId,
-        fecha: new Date(fecha),
-        horaInicio: new Date(`${fecha}T${horaInicio}:00`),
-        horaFin: new Date(`${fecha}T${horaFin}:00`),
+        medicoId: payload.id,
+        fecha: newFecha,
+        horaInicio: newHoraInicio,
+        horaFin: newHoraFin,
       },
     });
 
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
   }
 }
 
-// Obtener disponibilidad (GET)
+// Retrieve availability (GET)
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -50,9 +53,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const medicoId = payload.id;
     const disponibilidad = await prisma.disponibilidad.findMany({
-      where: { medicoId },
+      where: { medicoId: payload.id },
     });
     return NextResponse.json(disponibilidad, { status: 200 });
   } catch (error) {
@@ -61,7 +63,7 @@ export async function GET(req: Request) {
   }
 }
 
-// Editar disponibilidad (PUT)
+// Update availability (PUT)
 export async function PUT(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -73,9 +75,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const medicoId = payload.id;
-    const body = await req.json();
-    const { id, fecha, horaInicio, horaFin } = body;
+    const { id, fecha, horaInicio, horaFin } = await req.json();
 
     if (!id || !fecha || !horaInicio || !horaFin) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -84,7 +84,6 @@ export async function PUT(req: Request) {
     const disponibilidadActualizada = await prisma.disponibilidad.update({
       where: { id },
       data: {
-        medicoId,
         fecha: new Date(fecha),
         horaInicio: new Date(`${fecha}T${horaInicio}:00`),
         horaFin: new Date(`${fecha}T${horaFin}:00`),
@@ -98,7 +97,7 @@ export async function PUT(req: Request) {
   }
 }
 
-// Eliminar disponibilidad (DELETE)
+// Delete availability (DELETE)
 export async function DELETE(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -110,9 +109,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const medicoId = payload.id;
-    const body = await req.json();
-    const { id } = body;
+    const { id } = await req.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Missing ID' }, { status: 400 });

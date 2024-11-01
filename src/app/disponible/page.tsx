@@ -1,173 +1,131 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
+import { useEffect, useState } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from "@mui/material";
+import Swal from "sweetalert2";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-// Definir el tipo de los elementos de disponibilidad
 interface Disponibilidad {
   id: number;
-  fecha: string; // Podría ser Date pero en este caso es más probable que venga como string desde la API
+  fecha: string;
   horaInicio: string;
   horaFin: string;
 }
 
 export default function DisponibilidadPage() {
-  // Estados para almacenar la fecha y las horas de inicio/fin
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [horaInicio, setHoraInicio] = useState<string>(''); // Estado para la hora de inicio
-  const [horaFin, setHoraFin] = useState<string>(''); // Estado para la hora de fin
-  const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([]); // Estado tipado correctamente
-  const [editing, setEditing] = useState<boolean>(false); // Estado para editar
-  const [editId, setEditId] = useState<number | null>(null); // ID para editar
-  const router = useRouter();
+  const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [horaInicio, setHoraInicio] = useState<string>("");
+  const [horaFin, setHoraFin] = useState<string>("");
+  const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Efecto para cargar la disponibilidad existente
   useEffect(() => {
     const fetchDisponibilidad = async () => {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/auth/disponible', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/disponible", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (res.ok) {
         const data = await res.json();
         setDisponibilidad(data);
       } else {
-        console.error('Error al obtener la disponibilidad');
+        Swal.fire("Error", "Error al obtener la disponibilidad", "error");
       }
     };
-
     fetchDisponibilidad();
   }, []);
 
-  // Función para agregar o editar disponibilidad
+  const handleDateClick = (arg: { dateStr: string }) => {
+    setSelectedDate(arg.dateStr);
+    setDialogOpen(true);
+  };
+
   const handleAgregarDisponibilidad = async () => {
     if (!selectedDate || !horaInicio || !horaFin) {
-      alert('Por favor, selecciona una fecha y horarios válidos');
+      Swal.fire("Advertencia", "Por favor, selecciona una fecha y horarios válidos", "warning");
       return;
     }
-
-    const token = localStorage.getItem('token');
-    const url = editing ? `/api/auth/disponible?id=${editId}` : '/api/auth/disponible';
-    const method = editing ? 'PUT' : 'POST';
-
-    const res = await fetch(url, {
-      method,
+    const token = localStorage.getItem("token");
+    const res = await fetch("/api/auth/disponible", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        id: editId,
-        fecha: selectedDate.toISOString().split('T')[0], // Formato de fecha YYYY-MM-DD
-        horaInicio,
-        horaFin,
-      }),
+      body: JSON.stringify({ fecha: selectedDate, horaInicio, horaFin }),
     });
-
     if (res.ok) {
-      alert(editing ? 'Disponibilidad actualizada' : 'Disponibilidad agregada');
-      setHoraInicio('');
-      setHoraFin('');
-      setSelectedDate(null);
-      setEditing(false);
-      setEditId(null);
-      const updatedData = await res.json();
-      setDisponibilidad((prev) =>
-        editing ? prev.map((item) => (item.id === editId ? updatedData : item)) : [...prev, updatedData]
-      );
+      const newDisponibilidad = await res.json();
+      setDisponibilidad((prev) => [...prev, newDisponibilidad]);
+      Swal.fire("Éxito", "Disponibilidad agregada correctamente", "success");
+      setDialogOpen(false);
     } else {
-      console.error('Error al procesar la disponibilidad');
+      const errorData = await res.json();
+      Swal.fire("Error", errorData.error || "Error al agregar disponibilidad", "error");
     }
-  };
-
-  // Función para eliminar disponibilidad
-  const handleEliminarDisponibilidad = async (id: number) => {
-    const token = localStorage.getItem('token');
-
-    const res = await fetch('/api/auth/disponible', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ id }),
-    });
-
-    if (res.ok) {
-      setDisponibilidad(disponibilidad.filter((item) => item.id !== id));
-    } else {
-      console.error('Error al eliminar la disponibilidad');
-    }
-  };
-
-  // Función para editar disponibilidad
-  const handleEditar = (item: Disponibilidad) => {
-    setEditing(true);
-    setEditId(item.id);
-    setSelectedDate(new Date(item.fecha));
-    setHoraInicio(item.horaInicio.split('T')[1].slice(0, 5)); // Convertir a HH:MM
-    setHoraFin(item.horaFin.split('T')[1].slice(0, 5)); // Convertir a HH:MM
   };
 
   return (
     <ProtectedRoute>
-      <div>
-        <h1>Gestión de Disponibilidad</h1>
-
-        {/* Calendario para seleccionar la fecha */}
-        <Calendar
-          onChange={(value) => {
-            if (Array.isArray(value)) {
-              setSelectedDate(value[0]);
-            } else {
-              setSelectedDate(value);
-            }
-          }}
-          value={selectedDate}
+      <div className="max-w-4xl mx-auto mt-10 p-5 bg-white shadow-md rounded-lg">
+        <h1 className="text-2xl font-bold mb-5 text-center">Gestión de Disponibilidad</h1>
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          dateClick={handleDateClick}
+          events={disponibilidad.map((item) => ({
+            id: item.id.toString(),
+            title: `Disponible: ${item.horaInicio} - ${item.horaFin}`,
+            start: `${item.fecha}T${item.horaInicio}`,
+            end: `${item.fecha}T${item.horaFin}`,
+            backgroundColor: "#34D399",
+            borderColor: "#10B981",
+            textColor: "#ffffff",
+          }))}
+          height="auto"
+          contentHeight={350}
+          aspectRatio={1.3}
         />
-
-        {selectedDate && (
-          <div>
-            <h2>{editing ? 'Editar Horarios para' : 'Seleccionar Horarios para'} {selectedDate.toDateString()}</h2>
-            <label>
-              Hora de inicio:
-              <input
+        <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)}>
+          <DialogTitle>Agregar Disponibilidad</DialogTitle>
+          <DialogContent>
+            <div>
+              <TextField
+                label="Fecha seleccionada"
+                value={selectedDate || ""}
+                fullWidth
+                InputProps={{ readOnly: true }}
+                margin="dense"
+              />
+              <TextField
+                label="Hora de Inicio"
                 type="time"
                 value={horaInicio}
                 onChange={(e) => setHoraInicio(e.target.value)}
+                fullWidth
+                margin="dense"
               />
-            </label>
-            <label>
-              Hora de fin:
-              <input
+              <TextField
+                label="Hora de Fin"
                 type="time"
                 value={horaFin}
                 onChange={(e) => setHoraFin(e.target.value)}
+                fullWidth
+                margin="dense"
               />
-            </label>
-            <button onClick={handleAgregarDisponibilidad}>
-              {editing ? 'Actualizar Disponibilidad' : 'Agregar Disponibilidad'}
-            </button>
-          </div>
-        )}
-
-        <h2>Disponibilidad Actual</h2>
-        <ul>
-          {disponibilidad.map((item) => (
-            <li key={item.id}>
-              {new Date(item.fecha).toLocaleDateString()} - Desde: {new Date(item.horaInicio).toLocaleTimeString()} 
-              hasta: {new Date(item.horaFin).toLocaleTimeString()}
-              <button onClick={() => handleEditar(item)}>Editar</button>
-              <button onClick={() => handleEliminarDisponibilidad(item.id)}>Eliminar</button>
-            </li>
-          ))}
-        </ul>
+            </div>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAgregarDisponibilidad} color="primary">
+              Agregar
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     </ProtectedRoute>
   );

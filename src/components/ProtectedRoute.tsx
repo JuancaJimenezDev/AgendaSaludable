@@ -16,40 +16,40 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth/login'); // Redirige si no está autenticado
+      router.push('/login'); // Redirige si no está autenticado
     } else {
       try {
         const decodedToken: DecodedToken = jwtDecode(token);
         // Verifica si el token ha expirado
         if (Date.now() > decodedToken.exp * 1000) {
           localStorage.removeItem('token');
-          router.push('/auth/login');
+          router.push('/login');
         } else {
           setLoading(false); // Permite el acceso a la ruta protegida
         }
       } catch (error) {
         localStorage.removeItem('token');
-        router.push('/auth/login');
+        router.push('/login');
       }
     }
   }, [router]);
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth/login'); // Redirige si no está autenticado
+      router.push('/login'); // Redirige si no está autenticado
     } else {
       try {
         const decodedToken: DecodedToken = jwtDecode(token);
         // Verifica si el token ha expirado
         if (Date.now() > decodedToken.exp * 1000) {
           localStorage.removeItem('token');
-          router.push('/auth/login');
+          router.push('/login');
         } else {
           setLoading(false); // Permite el acceso a la ruta protegida
         }
       } catch (error) {
         localStorage.removeItem('token');
-        router.push('/auth/login');
+        router.push('/login');
       }
     }
   }, [router]);

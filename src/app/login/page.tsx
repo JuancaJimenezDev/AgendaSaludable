@@ -1,8 +1,8 @@
 "use client";
-
-import { useForm, SubmitHandler } from 'react-hook-form';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useForm, SubmitHandler } from "react-hook-form";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 type FormData = {
   correo: string;
@@ -12,7 +12,7 @@ type FormData = {
 function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>();
   const [errorMessage, setErrorMessage] = useState('');
-  const router = useRouter(); // Utiliza el hook `useRouter` de Next.js
+  const router = useRouter();
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
@@ -27,55 +27,49 @@ function LoginPage() {
       if (!res.ok) {
         setErrorMessage(resJson.message);
       } else {
-        // Almacena el token en localStorage
         localStorage.setItem('token', resJson.token);
-        
-        // Verifica el rol desde el token decodificado y redirige según el rol
-        const payload = JSON.parse(atob(resJson.token.split('.')[1]));  // Decodifica el JWT
-        
+
+        // Decodificar el token manualmente sin `jwt-decode`
+        const payload = JSON.parse(atob(resJson.token.split('.')[1]));
+
         if (payload.rol === 'Medico') {
-          router.push('/dashboard/medico');  // Redirige a la página de disponibilidad si es Médico
+          router.push('/dashboard/medico');
         } else if (payload.rol === 'Cliente') {
-          router.push('/dashboard/cliente');  // Redirige a la página del cliente si es Cliente
+          router.push('/dashboard/cliente');
         } else {
-          router.push('/');  // Redirige a la página principal si no tiene un rol válido
+          router.push('/');
         }
       }
     } catch (error) {
-      console.error('Error en la solicitud:', error);
+      Swal.fire("Error", "Error al iniciar sesión", "error");
       setErrorMessage('Error al iniciar sesión');
     }
   };
-  
 
   return (
     <div className="h-[calc(100vh-7rem)] flex justify-center items-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-1/4">
-        <h1 className="text-slate-200 font-bold text-4xl mb-4">Login</h1>
+      <form onSubmit={handleSubmit(onSubmit)} className="w-1/4 bg-gray-800 p-6 rounded-lg">
+        <h1 className="text-white font-bold text-4xl mb-6 text-center">Login</h1>
 
-        {errorMessage && <p className="text-red-500">{errorMessage}</p>}
+        {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
 
-        <label htmlFor="correo" className="text-slate-500 mb-2 block text-sm">Correo</label>
+        <label htmlFor="correo" className="text-slate-400 mb-2 block text-sm">Correo</label>
         <input
           type="email"
           {...register("correo", { required: 'El correo es obligatorio' })}
-          className="p-3 rounded block mb-2 bg-slate-900 text-slate-300 w-full"
+          className="p-3 rounded block mb-4 bg-gray-900 text-slate-300 w-full"
         />
-        {errors.correo && (
-          <p className="text-red-500">
-            {errors.correo.message ? errors.correo.message : 'Error'}
-          </p>
-        )}
+        {errors.correo && <p className="text-red-500">{errors.correo.message}</p>}
 
-        <label htmlFor="password" className="text-slate-500 mb-2 block text-sm">Contraseña</label>
+        <label htmlFor="password" className="text-slate-400 mb-2 block text-sm">Contraseña</label>
         <input
           type="password"
           {...register("password", { required: 'La contraseña es obligatoria' })}
-          className="p-3 rounded block mb-2 bg-slate-900 text-slate-300 w-full"
+          className="p-3 rounded block mb-4 bg-gray-900 text-slate-300 w-full"
         />
         {errors.password && <p className="text-red-500">{errors.password.message}</p>}
 
-        <button className="w-full bg-blue-500 text-white p-3 rounded-lg">Login</button>
+        <button className="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition">Login</button>
       </form>
     </div>
   );

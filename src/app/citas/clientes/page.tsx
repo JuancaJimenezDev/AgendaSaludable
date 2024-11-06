@@ -5,16 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-} from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, TextField } from "@mui/material";
 import Swal from "sweetalert2";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -23,141 +14,203 @@ interface Disponibilidad {
   fecha: string;
   horaInicio: string;
   horaFin: string;
+  ocupada?: boolean;
 }
 
 interface Medico {
   id: number;
   nombre: string;
-  especialidad: string;
-  disponibilidad: Disponibilidad[];
 }
 
-export default function ClienteCitasPage() {
-  const [doctores, setDoctores] = useState<Medico[]>([]);
-  const [especialidades, setEspecialidades] = useState<string[]>([]);
-  const [filteredDoctors, setFilteredDoctors] = useState<Medico[]>([]);
-  const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("");
-  const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
-  const [isDialogOpen, setDialogOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<Disponibilidad | null>(null);
+interface Especialidad {
+  id: number;
+  nombre: string;
+}
 
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const res = await fetch("/api/auth/citas/clientes", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          console.error("Status Code:", res.status); // Imprime el código de estado
-          console.error("Response Body:", await res.text()); // Imprime el cuerpo completo de la respuesta
-          throw new Error("Error al obtener los doctores");
-        }
+export default function CitasClientePage() {
+  const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([]);
+  const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
+  const [selectedEspecialidad, setSelectedEspecialidad] = useState<number | null>(null);
+  const [selectedMedico, setSelectedMedico] = useState<number | null>(null);
+  const [selectedDisponibilidad, setSelectedDisponibilidad] = useState<Disponibilidad | null>(null);
+  const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
+
+  // Obtener especialidades del backend
+  const fetchEspecialidades = async () => {
+    try {
+      const res = await fetch("/api/especialidades");
+      if (res.ok) {
         const data = await res.json();
-        setDoctores(data);
-      } catch (error) {
-        Swal.fire("Error", "Error al obtener los doctores", "error");
+        setEspecialidades(data);
       }
-    };    
-    fetchDoctors();
-  }, []);
-
-  const handleSelectEspecialidad = (event: SelectChangeEvent<string>) => {
-    const especialidad = event.target.value;
-    setSelectedEspecialidad(especialidad);
-    setFilteredDoctors(doctores.filter((doctor) => doctor.especialidad === especialidad));
-  };
-
-  const handleSelectDoctor = (event: SelectChangeEvent<number>) => {
-    const doctorId = Number(event.target.value);
-    setSelectedDoctor(doctorId);
-  };
-
-  const handleDateClick = (arg: { dateStr: string }) => {
-    const doctor = doctores.find((doc) => doc.id === selectedDoctor);
-    if (doctor) {
-      const disponibilidad = doctor.disponibilidad.find((slot) => slot.fecha.startsWith(arg.dateStr));
-      if (disponibilidad) {
-        setSelectedSlot(disponibilidad);
-        setDialogOpen(true);
-      } else {
-        Swal.fire("Info", "No hay disponibilidad para esta fecha", "info");
-      }
+    } catch (error) {
+      Swal.fire("Error", "No se pudieron cargar las especialidades", "error");
     }
   };
 
-  const handleBookAppointment = async () => {
-    if (!selectedSlot || !selectedDoctor) return;
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("/api/auth/citas/clientes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          medicoId: selectedDoctor,
-          disponibilidadId: selectedSlot.id,
-          fecha: selectedSlot.fecha,
-          hora: selectedSlot.horaInicio,
-        }),
-      });
+  const fetchMedicos = async (especialidadId: number) => {
+    const res = await fetch(`/api/doctores?especialidadId=${especialidadId}`);
+    const data = await res.json();
+    setMedicos(data);
+  };
+  
 
-      if (res.ok) {
-        Swal.fire("Cita Programada", "Tu cita ha sido programada exitosamente", "success");
-        setDialogOpen(false);
-      } else {
-        Swal.fire("Error", "Error al programar la cita", "error");
-      }
-    } catch (error) {
-      Swal.fire("Error", "Error al programar la cita", "error");
+
+const fetchDisponibilidad = async () => {
+  const token = localStorage.getItem("token");
+  if (!token || !selectedMedico) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    console.log("Disponibilidad obtenida:", data); // Verificación de datos
+    setDisponibilidad(data);
+  } catch (error) {
+    console.error("Error al obtener disponibilidad:", error);
+  }
+};
+
+
+
+  useEffect(() => {
+    if (disponibilidad.length > 0) {
+      // Forzar actualización del calendario si es necesario
+      setDisponibilidad([...disponibilidad]);
+    }
+  }, [disponibilidad]);
+  
+  // Cargar especialidades al cargar la página
+  useEffect(() => {
+    fetchEspecialidades();
+  }, []);
+
+  // Cargar médicos al seleccionar una especialidad
+  useEffect(() => {
+    if (selectedEspecialidad) fetchMedicos(selectedEspecialidad);
+  }, [selectedEspecialidad]);
+
+  useEffect(() => {
+    if (selectedMedico) {
+      fetchDisponibilidad();
+    }
+  }, [selectedMedico]);
+  
+
+  const handleEventClick = (eventClickInfo: any) => {
+    const selectedEvent = disponibilidad.find((item) => item.id === parseInt(eventClickInfo.event.id));
+    if (selectedEvent && !selectedEvent.ocupada) {
+      setSelectedDisponibilidad(selectedEvent);
+      setDialogOpen(true);
+    } else {
+      Swal.fire("Información", "Este horario ya ha sido reservado", "info");
+    }
+  };
+
+  const handleAgendarCita = async () => {
+    if (!selectedDisponibilidad) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      Swal.fire("Error", "No se encontró el token de autenticación.", "error");
+      return;
+    }
+
+    const res = await fetch("/api/citas/clientes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        disponibilidadId: selectedDisponibilidad.id,
+        fecha: selectedDisponibilidad.fecha,
+        hora: selectedDisponibilidad.horaInicio,
+      }),
+    });
+
+    if (res.ok) {
+      Swal.fire("Éxito", "Cita agendada correctamente", "success");
+      setDialogOpen(false);
+      setDisponibilidad((prev) =>
+        prev.map((item) => (item.id === selectedDisponibilidad.id ? { ...item, ocupada: true } : item))
+      );
+    } else {
+      Swal.fire("Error", "Error al agendar la cita", "error");
     }
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="Cliente">
       <div className="max-w-4xl mx-auto mt-10 p-5 bg-white shadow-md rounded-lg">
-        <h1 className="text-2xl font-bold mb-5 text-center">Programación de Citas Médicas</h1>
-        <div className="flex justify-center mb-5">
-          <Select value={selectedEspecialidad} onChange={handleSelectEspecialidad} displayEmpty fullWidth>
-            <MenuItem value="" disabled>Seleccione Especialidad</MenuItem>
-            {especialidades.map((especialidad, index) => (
-              <MenuItem key={index} value={especialidad}>{especialidad}</MenuItem>
+        <h1 className="text-2xl font-bold mb-5 text-center">Agendar Cita</h1>
+
+        <div className="flex gap-4 mb-4">
+          <Select
+            value={selectedEspecialidad || ""}
+            onChange={(e) => setSelectedEspecialidad(e.target.value as number)}
+            displayEmpty
+            fullWidth
+            variant="outlined"
+          >
+            <MenuItem value="" disabled>Especialidad</MenuItem>
+            {especialidades.map((especialidad) => (
+              <MenuItem key={especialidad.id} value={especialidad.id}>{especialidad.nombre}</MenuItem>
             ))}
           </Select>
-          {selectedEspecialidad && (
-            <Select value={selectedDoctor ?? ""} onChange={handleSelectDoctor} displayEmpty fullWidth>
-              <MenuItem value="" disabled>Seleccione Doctor</MenuItem>
-              {filteredDoctors.map((doctor) => (
-                <MenuItem key={doctor.id} value={doctor.id}>{doctor.nombre}</MenuItem>
-              ))}
-            </Select>
-          )}
+
+          <Select
+            value={selectedMedico || ""}
+            onChange={(e) => setSelectedMedico(e.target.value as number)}
+            displayEmpty
+            fullWidth
+            variant="outlined"
+            disabled={!selectedEspecialidad}
+          >
+            <MenuItem value="" disabled>Doctor</MenuItem>
+            {medicos.map((medico) => (
+              <MenuItem key={medico.id} value={medico.id}>{medico.nombre}</MenuItem>
+            ))}
+          </Select>
         </div>
 
         <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          dateClick={handleDateClick}
-          events={filteredDoctors.flatMap((doctor) =>
-            doctor.disponibilidad.map((slot) => ({
-              title: `Disponible`,
-              start: slot.fecha,
-              end: slot.horaFin,
-            }))
-          )}
-        />
+  plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+  initialView="dayGridMonth"
+  events={disponibilidad.map((item) => ({
+    id: item.id.toString(),
+    title: `Disponible: ${item.horaInicio} - ${item.horaFin}`,
+    start: `${item.fecha}T${item.horaInicio}`, // Formato correcto
+    end: `${item.fecha}T${item.horaFin}`,       // Formato correcto
+    backgroundColor: item.ocupada ? "#F87171" : "#34D399",
+    borderColor: item.ocupada ? "#B91C1C" : "#10B981",
+    textColor: "#ffffff",
+  }))}
+  eventClick={handleEventClick}
+  height="auto"
+  contentHeight={350}
+  aspectRatio={1.3}
+/>
+
 
         <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)}>
           <DialogTitle>Confirmar Cita</DialogTitle>
           <DialogContent>
-            <p>Fecha: {selectedSlot?.fecha}</p>
-            <p>Hora: {selectedSlot?.horaInicio} - {selectedSlot?.horaFin}</p>
+            <p>¿Deseas agendar la cita en el siguiente horario?</p>
+            <p>
+              Fecha: {selectedDisponibilidad?.fecha} <br />
+              Hora: {selectedDisponibilidad?.horaInicio} - {selectedDisponibilidad?.horaFin}
+            </p>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleBookAppointment} color="primary">Confirmar Cita</Button>
+            <Button onClick={handleAgendarCita} color="primary">
+              Confirmar
+            </Button>
           </DialogActions>
         </Dialog>
       </div>

@@ -12,8 +12,9 @@ model Usuario {
   nombre         String           @unique
   correo         String           @unique
   contrasena     String
-  rol            Rol              @default(Cliente)
-  especialidad   String?          // Nueva columna para la especialidad
+  rol            Rol
+  especialidad   Especialidad?    @relation("UsuarioEspecialidad", fields: [especialidadId], references: [id])
+  especialidadId Int?             // Especialidad es opcional, solo se rellena si el usuario es un médico
   citasCliente   Cita[]           @relation("citasCliente")
   citasMedico    Cita[]           @relation("citasMedico")
   disponibilidad Disponibilidad[]
@@ -21,15 +22,24 @@ model Usuario {
   actualizadoEn  DateTime         @updatedAt
 }
 
+model Especialidad {
+  id             Int              @id @default(autoincrement())
+  nombre         String           @unique
+  medicos        Usuario[]        @relation("UsuarioEspecialidad") // Relación inversa a `Usuario`
+  disponibilidad Disponibilidad[] // Relación de especialidad con disponibilidad
+  citas          Cita[]           @relation("citaEspecialidad")    // Relación inversa a `Cita`
+}
 
 model Disponibilidad {
-  id          Int        @id @default(autoincrement())
-  medico      Usuario    @relation(fields: [medicoId], references: [id], onDelete: Cascade)
-  medicoId    Int
-  fecha       DateTime   @db.Date
-  horaInicio  DateTime   @db.Time
-  horaFin     DateTime   @db.Time
-  citas       Cita[]     @relation("disponibilidadCitas")
+  id            Int               @id @default(autoincrement())
+  medico        Usuario           @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  medicoId      Int
+  especialidad  Especialidad?     @relation(fields: [especialidadId], references: [id]) // Inicialmente opcional
+  especialidadId Int?
+  fecha         DateTime          @db.Date
+  horaInicio    DateTime          @db.Time
+  horaFin       DateTime          @db.Time
+  citas         Cita[]            @relation("disponibilidadCitas")
 }
 
 model Cita {
@@ -38,6 +48,8 @@ model Cita {
   clienteId         Int
   medico            Usuario          @relation("citasMedico", fields: [medicoId], references: [id], onDelete: Cascade)
   medicoId          Int
+  especialidad      Especialidad?    @relation("citaEspecialidad", fields: [especialidadId], references: [id]) // Inicialmente opcional
+  especialidadId    Int?
   disponibilidad    Disponibilidad?  @relation("disponibilidadCitas", fields: [disponibilidadId], references: [id], onDelete: SetNull)
   disponibilidadId  Int?
   fecha             DateTime         @db.Date
@@ -56,12 +68,14 @@ model HistorialCita {
   fechaCambio DateTime  @default(now())
 }
 
+// Definición de los roles para controlar el acceso y permisos en la aplicación
 enum Rol {
   Administrador
   Medico
   Cliente
 }
 
+// Definición de los estados posibles de una cita
 enum EstadoCita {
   Programada
   Cancelada
@@ -69,6 +83,7 @@ enum EstadoCita {
   Confirmada
 }
 
+// Definición de las acciones posibles en el historial de citas
 enum Accion {
   Cancelada
   Reprogramada

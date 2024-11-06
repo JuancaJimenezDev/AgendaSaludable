@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Select, MenuItem, Button, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 import Swal from "sweetalert2";
-
+import '../styles/globals.css';
 interface Usuario {
   id: number;
   nombre: string;

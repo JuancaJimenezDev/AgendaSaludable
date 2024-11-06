@@ -5,7 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, TextField } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem } from "@mui/material";
 import Swal from "sweetalert2";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -36,70 +36,57 @@ export default function CitasClientePage() {
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState<Disponibilidad | null>(null);
   const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Obtener especialidades del backend
-  const fetchEspecialidades = async () => {
-    try {
-      const res = await fetch("/api/especialidades");
-      if (res.ok) {
+  // Función para obtener especialidades al cargar el componente
+  useEffect(() => {
+    const fetchEspecialidades = async () => {
+      try {
+        const res = await fetch("/api/especialidades");
         const data = await res.json();
+        console.log("Especialidades:", data); // Verifica que los datos de especialidades están llegando
         setEspecialidades(data);
+      } catch (error) {
+        console.error("Error al obtener especialidades:", error);
       }
-    } catch (error) {
-      Swal.fire("Error", "No se pudieron cargar las especialidades", "error");
-    }
-  };
-
-  const fetchMedicos = async (especialidadId: number) => {
-    const res = await fetch(`/api/doctores?especialidadId=${especialidadId}`);
-    const data = await res.json();
-    setMedicos(data);
-  };
-  
-
-
-const fetchDisponibilidad = async () => {
-  const token = localStorage.getItem("token");
-  if (!token || !selectedMedico) {
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    console.log("Disponibilidad obtenida:", data); // Verificación de datos
-    setDisponibilidad(data);
-  } catch (error) {
-    console.error("Error al obtener disponibilidad:", error);
-  }
-};
-
-
-
-  useEffect(() => {
-    if (disponibilidad.length > 0) {
-      // Forzar actualización del calendario si es necesario
-      setDisponibilidad([...disponibilidad]);
-    }
-  }, [disponibilidad]);
-  
-  // Cargar especialidades al cargar la página
-  useEffect(() => {
+    };
     fetchEspecialidades();
   }, []);
 
-  // Cargar médicos al seleccionar una especialidad
+  // Función para obtener médicos al seleccionar una especialidad
   useEffect(() => {
-    if (selectedEspecialidad) fetchMedicos(selectedEspecialidad);
+    const fetchMedicos = async () => {
+      if (selectedEspecialidad) {
+        try {
+          const res = await fetch(`/api/doctores?especialidadId=${selectedEspecialidad}`);
+          const data = await res.json();
+          console.log("Médicos:", data); // Verifica que los datos de médicos están llegando
+          setMedicos(data);
+        } catch (error) {
+          console.error("Error al obtener médicos:", error);
+        }
+      }
+    };
+    fetchMedicos();
   }, [selectedEspecialidad]);
 
+  // Función para obtener disponibilidad al seleccionar un médico
   useEffect(() => {
-    if (selectedMedico) {
-      fetchDisponibilidad();
-    }
+    const fetchDisponibilidad = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || !selectedMedico) return;
+
+      try {
+        const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        console.log("Disponibilidad:", data); // Verifica que los datos de disponibilidad están llegando
+        setDisponibilidad(data);
+      } catch (error) {
+        console.error("Error al obtener disponibilidad:", error);
+      }
+    };
+    fetchDisponibilidad();
   }, [selectedMedico]);
-  
 
   const handleEventClick = (eventClickInfo: any) => {
     const selectedEvent = disponibilidad.find((item) => item.id === parseInt(eventClickInfo.event.id));
@@ -179,23 +166,22 @@ const fetchDisponibilidad = async () => {
         </div>
 
         <FullCalendar
-  plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-  initialView="dayGridMonth"
-  events={disponibilidad.map((item) => ({
-    id: item.id.toString(),
-    title: `Disponible: ${item.horaInicio} - ${item.horaFin}`,
-    start: `${item.fecha}T${item.horaInicio}`, // Formato correcto
-    end: `${item.fecha}T${item.horaFin}`,       // Formato correcto
-    backgroundColor: item.ocupada ? "#F87171" : "#34D399",
-    borderColor: item.ocupada ? "#B91C1C" : "#10B981",
-    textColor: "#ffffff",
-  }))}
-  eventClick={handleEventClick}
-  height="auto"
-  contentHeight={350}
-  aspectRatio={1.3}
-/>
-
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          events={disponibilidad.map((item) => ({
+            id: item.id.toString(),
+            title: `Disponible: ${item.horaInicio} - ${item.horaFin}`,
+            start: `${item.fecha}T${item.horaInicio}`,
+            end: `${item.fecha}T${item.horaFin}`,
+            backgroundColor: item.ocupada ? "#F87171" : "#34D399",
+            borderColor: item.ocupada ? "#B91C1C" : "#10B981",
+            textColor: "#ffffff",
+          }))}
+          eventClick={handleEventClick}
+          height="auto"
+          contentHeight={350}
+          aspectRatio={1.3}
+        />
 
         <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)}>
           <DialogTitle>Confirmar Cita</DialogTitle>

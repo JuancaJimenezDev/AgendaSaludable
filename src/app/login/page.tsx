@@ -36,11 +36,14 @@ function LoginPage() {
           router.push('/dashboard/medico');
         } else if (payload.rol === 'Cliente') {
           router.push('/dashboard/cliente');
-        } else {
-          router.push('/');
+        } else if(payload.rol === 'Administrador'){
+          router.push('/admin');
         }
-      }
-    } catch (error) {
+        else {
+          router.push('/login')
+        }
+        }
+      } catch (error) {
       Swal.fire("Error", "Error al iniciar sesión", "error");
       setErrorMessage('Error al iniciar sesión');
     }

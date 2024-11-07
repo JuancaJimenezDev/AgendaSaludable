@@ -1,0 +1,19 @@
+/* styles/Navbar.module.css */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    background-color: #333;
+  }
+  
+  .navbar a {
+    color: #fff;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+  }
+  
+  .navbar a:hover {
+    background-color: #555;
+  }
+
+  

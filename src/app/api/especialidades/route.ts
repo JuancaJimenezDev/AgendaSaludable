@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
+    // Consulta para obtener todas las especialidades
     const especialidades = await prisma.especialidad.findMany({
       select: {
         id: true,

@@ -1,7 +1,9 @@
+// src/components/ProtectedRoute.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 interface DecodedToken {
   exp: number;
@@ -18,32 +20,37 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-    } else {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        Swal.fire("No se encontró el token, redirigiendo al login");
+        router.push("/login");
+        return;
+      }
+
       try {
-        // Decodificar el token manualmente sin `jwt-decode`
-        const payload: DecodedToken = JSON.parse(atob(token.split('.')[1]));
+        const payload: DecodedToken = JSON.parse(atob(token.split(".")[1]));
 
         if (Date.now() >= payload.exp * 1000) {
+          Swal.fire("Token expirado, redirigiendo al login");
           localStorage.removeItem("token");
           router.push("/login");
         } else if (payload.rol !== requiredRole) {
+          Swal.fire("No tienes permisos para acceder a esta página");
           router.push("/unauthorized");
         } else {
           setLoading(false);
         }
       } catch (error) {
-        console.error("Error decodificando el token:", error);
+        console.error("Error decoding token:", error);
         localStorage.removeItem("token");
         router.push("/login");
       }
     }
-  }, [router, requiredRole]);
+  }, [requiredRole, router]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Cargando...</div>;
   }
 
   return children;

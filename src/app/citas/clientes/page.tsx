@@ -8,6 +8,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem } from "@mui/material";
 import Swal from "sweetalert2";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { format } from "date-fns";
 
 interface Disponibilidad {
   id: number;
@@ -36,57 +37,83 @@ export default function CitasClientePage() {
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState<Disponibilidad | null>(null);
   const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Función para obtener especialidades al cargar el componente
+  // Centralized token retrieval
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+
   useEffect(() => {
+    if (!token) {
+      Swal.fire("Error", "No se encontró el token de autenticación.", "error");
+      return;
+    }
+
+    // Fetch specialties
     const fetchEspecialidades = async () => {
       try {
-        const res = await fetch("/api/especialidades");
+        const res = await fetch("/api/especialidades", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Error al obtener especialidades");
+
         const data = await res.json();
-        console.log("Especialidades:", data); // Verifica que los datos de especialidades están llegando
         setEspecialidades(data);
-      } catch (error) {
-        console.error("Error al obtener especialidades:", error);
+      } catch (error: any) {
+        Swal.fire("Error", error.message || "Error desconocido", "error");
       }
     };
     fetchEspecialidades();
-  }, []);
+  }, [token]);
 
-  // Función para obtener médicos al seleccionar una especialidad
   useEffect(() => {
+    // Fetch doctors based on selected specialty
     const fetchMedicos = async () => {
       if (selectedEspecialidad) {
         try {
           const res = await fetch(`/api/doctores?especialidadId=${selectedEspecialidad}`);
+          if (!res.ok) throw new Error("Error al obtener médicos");
+
           const data = await res.json();
-          console.log("Médicos:", data); // Verifica que los datos de médicos están llegando
           setMedicos(data);
-        } catch (error) {
-          console.error("Error al obtener médicos:", error);
+        } catch (error: any) {
+          Swal.fire("Error", error.message || "Error desconocido", "error");
         }
       }
     };
     fetchMedicos();
   }, [selectedEspecialidad]);
 
-  // Función para obtener disponibilidad al seleccionar un médico
   useEffect(() => {
-    const fetchDisponibilidad = async () => {
-      const token = localStorage.getItem("token");
-      if (!token || !selectedMedico) return;
-
-      try {
-        const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        console.log("Disponibilidad:", data); // Verifica que los datos de disponibilidad están llegando
-        setDisponibilidad(data);
-      } catch (error) {
-        console.error("Error al obtener disponibilidad:", error);
-      }
-    };
-    fetchDisponibilidad();
+    // Fetch availability when a doctor is selected
+    if (selectedMedico) {
+      fetchDisponibilidad();
+    }
   }, [selectedMedico]);
+
+  const fetchDisponibilidad = async () => {
+    if (!token) {
+      Swal.fire("Error", "No se encontró el token de autenticación", "error");
+      return;
+    }
+    if (!selectedMedico) {
+      Swal.fire("Error", "El ID del médico no está seleccionado", "error");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Fetched disponibilidad data:", data); // Debugging log
+        setDisponibilidad(Array.isArray(data) ? data : []);
+      } else {
+        Swal.fire("Error", "Error al cargar disponibilidad", "error");
+      }
+    } catch (error) {
+      Swal.fire("Error", "Hubo un problema al conectar con el servidor", "error");
+    }
+  };
 
   const handleEventClick = (eventClickInfo: any) => {
     const selectedEvent = disponibilidad.find((item) => item.id === parseInt(eventClickInfo.event.id));
@@ -99,35 +126,38 @@ export default function CitasClientePage() {
   };
 
   const handleAgendarCita = async () => {
-    if (!selectedDisponibilidad) return;
+    if (!selectedDisponibilidad || !token) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      Swal.fire("Error", "No se encontró el token de autenticación.", "error");
-      return;
-    }
+    try {
+      const res = await fetch("/api/citas/clientes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          disponibilidadId: selectedDisponibilidad.id,
+          fecha: selectedDisponibilidad.fecha,
+          hora: selectedDisponibilidad.horaInicio,
+        }),
+      });
 
-    const res = await fetch("/api/citas/clientes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        disponibilidadId: selectedDisponibilidad.id,
-        fecha: selectedDisponibilidad.fecha,
-        hora: selectedDisponibilidad.horaInicio,
-      }),
-    });
+      if (res.status === 403) {
+        Swal.fire("Error", "No tienes permisos para agendar una cita.", "error");
+        return;
+      }
 
-    if (res.ok) {
-      Swal.fire("Éxito", "Cita agendada correctamente", "success");
-      setDialogOpen(false);
-      setDisponibilidad((prev) =>
-        prev.map((item) => (item.id === selectedDisponibilidad.id ? { ...item, ocupada: true } : item))
-      );
-    } else {
-      Swal.fire("Error", "Error al agendar la cita", "error");
+      if (res.ok) {
+        Swal.fire("Éxito", "Cita agendada correctamente", "success");
+        setDialogOpen(false);
+        setDisponibilidad((prev) =>
+          prev.map((item) => (item.id === selectedDisponibilidad.id ? { ...item, ocupada: true } : item))
+        );
+      } else {
+        Swal.fire("Error", "Error al agendar la cita", "error");
+      }
+    } catch (error) {
+      Swal.fire("Error", "Error de red al intentar agendar la cita", "error");
     }
   };
 
@@ -135,7 +165,6 @@ export default function CitasClientePage() {
     <ProtectedRoute requiredRole="Cliente">
       <div className="max-w-4xl mx-auto mt-10 p-5 bg-white shadow-md rounded-lg">
         <h1 className="text-2xl font-bold mb-5 text-center">Agendar Cita</h1>
-
         <div className="flex gap-4 mb-4">
           <Select
             value={selectedEspecialidad || ""}
@@ -165,32 +194,50 @@ export default function CitasClientePage() {
           </Select>
         </div>
 
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          events={disponibilidad.map((item) => ({
-            id: item.id.toString(),
-            title: `Disponible: ${item.horaInicio} - ${item.horaFin}`,
-            start: `${item.fecha}T${item.horaInicio}`,
-            end: `${item.fecha}T${item.horaFin}`,
-            backgroundColor: item.ocupada ? "#F87171" : "#34D399",
-            borderColor: item.ocupada ? "#B91C1C" : "#10B981",
-            textColor: "#ffffff",
-          }))}
-          eventClick={handleEventClick}
-          height="auto"
-          contentHeight={350}
-          aspectRatio={1.3}
-        />
+        {selectedMedico && disponibilidad.length > 0 ? (
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            events={disponibilidad.map((item) => {
+              const startDateTime = new Date(
+                 `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaInicio), "HH:mm:ss")}`
+              ).toISOString();
+           
+              const endDateTime = new Date(
+                 `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaFin), "HH:mm:ss")}`
+              ).toISOString();
+           
+              return {
+                 id: item.id.toString(),
+                 title: item.ocupada ? "Reservado" : `Disponible: ${format(new Date(item.horaInicio), "HH:mm")} - ${format(new Date(item.horaFin), "HH:mm")}`,
+                 start: startDateTime,
+                 end: endDateTime,
+                 backgroundColor: item.ocupada ? "#F87171" : "#34D399",
+                 borderColor: item.ocupada ? "#B91C1C" : "#10B981",
+                 textColor: "#ffffff",
+              };
+           })}
+           
+            eventClick={handleEventClick}
+            height="auto"
+            contentHeight={350}
+            aspectRatio={1.3}
+          />
+        ) : (
+          <p>No hay disponibilidad para el médico seleccionado.</p>
+        )}
 
         <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)}>
           <DialogTitle>Confirmar Cita</DialogTitle>
           <DialogContent>
-            <p>¿Deseas agendar la cita en el siguiente horario?</p>
-            <p>
-              Fecha: {selectedDisponibilidad?.fecha} <br />
-              Hora: {selectedDisponibilidad?.horaInicio} - {selectedDisponibilidad?.horaFin}
-            </p>
+            {selectedDisponibilidad ? (
+              <p>
+                Fecha: {format(new Date(selectedDisponibilidad.fecha), "dd/MM/yyyy")} <br />
+                Hora: {format(new Date(selectedDisponibilidad.horaInicio), "HH:mm")} - {format(new Date(selectedDisponibilidad.horaFin), "HH:mm")}
+              </p>
+            ) : (
+              <p>Información de disponibilidad no cargada.</p>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>

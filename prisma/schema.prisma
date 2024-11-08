@@ -31,16 +31,18 @@ model Especialidad {
 }
 
 model Disponibilidad {
-  id            Int               @id @default(autoincrement())
-  medico        Usuario           @relation(fields: [medicoId], references: [id], onDelete: Cascade)
-  medicoId      Int
-  especialidad  Especialidad?     @relation(fields: [especialidadId], references: [id]) // Inicialmente opcional
+  id             Int           @id @default(autoincrement())
+  medico         Usuario       @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  medicoId       Int
+  especialidad   Especialidad? @relation(fields: [especialidadId], references: [id])
   especialidadId Int?
-  fecha         DateTime          @db.Date
-  horaInicio    DateTime          @db.Time
-  horaFin       DateTime          @db.Time
-  citas         Cita[]            @relation("disponibilidadCitas")
+  fecha          DateTime      @db.Date
+  horaInicio     DateTime      @db.Time
+  horaFin        DateTime      @db.Time
+  ocupada        Boolean       @default(false) // Campo ocupado agregado
+  citas          Cita[]        @relation("disponibilidadCitas")
 }
+
 
 model Cita {
   id                Int              @id @default(autoincrement())

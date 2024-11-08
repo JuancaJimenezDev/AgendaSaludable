@@ -6,7 +6,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from "@mui/material";
 import Swal from "sweetalert2";
-
+import { format } from "date-fns";
 
 interface Disponibilidad {
   id: number;
@@ -14,11 +14,6 @@ interface Disponibilidad {
   horaInicio: string;
   horaFin: string;
   ocupada?: boolean;
-}
-
-interface TokenPayload {
-  id: number;
-  rol: "Medico" | "Cliente" | "Administrador";
 }
 
 export default function DisponibilidadPage() {
@@ -39,27 +34,13 @@ export default function DisponibilidadPage() {
   
   const fetchDisponibilidad = async (token: string) => {
     try {
-      const resDecode = await fetch("/api/decodeToken", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });      
-  
-      if (!resDecode.ok) {
-        const errorData = await resDecode.json();
-        throw new Error(errorData.error || "Error al decodificar el token");
-      }
-  
-      const { decoded: decodedToken } = await resDecode.json(); // Lee solo una vez
-      console.log("Decoded Token:", decodedToken);
-  
       const resDisponibilidad = await fetch("/api/disponibilidad", {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       if (resDisponibilidad.ok) {
         const data = await resDisponibilidad.json();
-        return data;
+        setDisponibilidades(data); // Actualiza el estado con las disponibilidades obtenidas
       } else {
         const errorData = await resDisponibilidad.json();
         throw new Error(errorData.error || "Error al cargar disponibilidad");
@@ -69,7 +50,6 @@ export default function DisponibilidadPage() {
       Swal.fire("Error", error.message || "Hubo un problema al conectar con el servidor", "error");
     }
   };
-  
 
   const handleDateClick = (arg: any) => {
     setFecha(arg.dateStr);
@@ -95,6 +75,19 @@ export default function DisponibilidadPage() {
       return;
     }
 
+    // Verificar si ya existe una disponibilidad en el mismo día y horario
+    const existeDisponibilidad = disponibilidades.some(
+      (disp) =>
+        disp.fecha === fecha &&
+        disp.horaInicio === horaInicio &&
+        disp.horaFin === horaFin
+    );
+
+    if (existeDisponibilidad) {
+      Swal.fire("Error", "Ya existe una disponibilidad en el mismo horario", "error");
+      return;
+    }
+
     try {
       const res = await fetch("/api/disponibilidad", {
         method: "POST",
@@ -106,7 +99,7 @@ export default function DisponibilidadPage() {
       });
 
       if (res.ok) {
-        await fetchDisponibilidad(token);
+        await fetchDisponibilidad(token); // Recarga las disponibilidades después de añadir una nueva
         Swal.fire("Éxito", "Disponibilidad agregada correctamente", "success");
         handleCloseDialog();
       } else {
@@ -126,15 +119,20 @@ export default function DisponibilidadPage() {
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
-        events={disponibilidades.map((item) => ({
-          id: item.id.toString(),
-          title: item.ocupada ? "Reservado" : "Disponible",
-          start: `${item.fecha}T${item.horaInicio}`,
-          end: `${item.fecha}T${item.horaFin}`,
-          backgroundColor: item.ocupada ? "#F87171" : "#34D399",
-          borderColor: item.ocupada ? "#B91C1C" : "#10B981",
-          textColor: "#ffffff",
-        }))}
+        events={disponibilidades.map((item) => {
+          const startDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaInicio), "HH:mm:ss")}`;
+          const endDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaFin), "HH:mm:ss")}`;
+
+          return {
+            id: item.id.toString(),
+            title: item.ocupada ? "Reservado" : "Disponible",
+            start: startDateTime,
+            end: endDateTime,
+            backgroundColor: item.ocupada ? "#F87171" : "#34D399",
+            borderColor: item.ocupada ? "#B91C1C" : "#10B981",
+            textColor: "#ffffff",
+          };
+        })}
         dateClick={handleDateClick}
         height="auto"
         contentHeight={350}

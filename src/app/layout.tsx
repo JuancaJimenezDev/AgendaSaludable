@@ -14,23 +14,32 @@ type UserRole = "Medico" | "Cliente" | "Administrador";
 
 export default function RootLayout({ children }: LayoutProps) {
   const [role, setRole] = useState<UserRole | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
+  // Función para verificar el token y el rol
+  const fetchRole = () => {
+    const token = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("userRole") as UserRole | null;
+
+    if (token && storedRole) {
+      setRole(storedRole);
+      setIsAuthenticated(true); // Marca al usuario como autenticado
+    } else {
+      setRole(null);
+      setIsAuthenticated(false);
+      router.push("/login"); // Redirige al login si no hay token o rol
+    }
+  };
+
   useEffect(() => {
-    const fetchRole = () => {
-      const token = localStorage.getItem("token");
-      const storedRole = localStorage.getItem("userRole") as UserRole | null;
-
-      if (token && storedRole) {
-        setRole(storedRole);
-      } else {
-        router.push("/login");
-      }
-    };
-
+    // Verificar el rol al cargar el componente
     fetchRole();
+
+    // Escuchar eventos de cambios en `localStorage`
     window.addEventListener("storage", fetchRole);
 
+    // Limpieza del evento al desmontar el componente
     return () => {
       window.removeEventListener("storage", fetchRole);
     };
@@ -42,8 +51,9 @@ export default function RootLayout({ children }: LayoutProps) {
         <title>Agenda Saludable</title>
         <meta name="description" content="Aplicación de gestión de citas médicas" />
       </head>
-      <body>
-        {role && <Navbar userRole={role} />}
+      <body className="bg-background-color text-text-color font-sans">
+        {/* Renderizar Navbar solo si el usuario está autenticado y tiene un rol */}
+        {isAuthenticated && role && <Navbar userRole={role} />}
         <main>{children}</main>
       </body>
     </html>

@@ -17,28 +17,35 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const [isLoading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Nuevo estado para el cierre de sesión
   const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
-      if (!token) {
+
+      // Si no hay token y no estamos cerrando sesión, redirige al login
+      if (!token && !isLoggingOut) {
         Swal.fire("No se encontró el token, redirigiendo al login");
         router.push("/login");
         return;
       }
 
       try {
-        const payload: DecodedToken = JSON.parse(atob(token.split(".")[1]));
+        const payload: DecodedToken = JSON.parse(atob(token!.split(".")[1]));
 
+        // Verifica si el token ha expirado
         if (Date.now() >= payload.exp * 1000) {
           Swal.fire("Token expirado, redirigiendo al login");
           localStorage.removeItem("token");
+          setIsLoggingOut(true); // Cambia el estado para indicar que estamos cerrando sesión
           router.push("/login");
         } else if (payload.rol !== requiredRole) {
+          // Si el rol no es el requerido, redirige a una página de "no autorizado"
           Swal.fire("No tienes permisos para acceder a esta página");
           router.push("/unauthorized");
         } else {
+          // Si todo es correcto, termina la carga y muestra el contenido
           setLoading(false);
         }
       } catch (error) {
@@ -47,10 +54,10 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         router.push("/login");
       }
     }
-  }, [requiredRole, router]);
+  }, [requiredRole, router, isLoggingOut]);
 
-  if (isLoading) {
-    return <div>Cargando...</div>;
+  if (isLoading || isLoggingOut) {
+    return <div>Cargando...</div>; // Muestra el mensaje de carga mientras se procesa la sesión
   }
 
   return children;

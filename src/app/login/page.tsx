@@ -1,9 +1,9 @@
-// src/app/login/page.tsx
 "use client";
 
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Swal from "sweetalert2";
 
 type FormData = {
@@ -32,17 +32,11 @@ export default function LoginPage() {
       }
 
       const { token } = await response.json();
-
-      // Guardar el token en localStorage y decodificar el rol
       localStorage.setItem("token", token);
-      const payload = JSON.parse(atob(token.split(".")[1])); // Decodificar el payload del JWT
+      const payload = JSON.parse(atob(token.split(".")[1]));
       localStorage.setItem("userRole", payload.rol);
-      console.log("Token y rol guardados en localStorage:", token, payload.rol);
-
-      // Dispara un evento `storage` para que `RootLayout` actualice el estado del rol
       window.dispatchEvent(new Event("storage"));
 
-      // Redirigir según el rol del usuario
       switch (payload.rol) {
         case "Medico":
           router.push("/dashboard/medico");
@@ -57,7 +51,7 @@ export default function LoginPage() {
           router.push("/login");
       }
 
-      reset(); // Limpiar el formulario después del inicio de sesión
+      reset();
     } catch (error) {
       console.error("Error en el login:", error);
       setErrorMessage("Error al iniciar sesión");
@@ -68,9 +62,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-200 to-blue-400">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg transform transition-all hover:shadow-xl">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          Iniciar Sesión
-        </h2>
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Iniciar Sesión</h2>
 
         {errorMessage && (
           <p className="text-red-500 mb-4 text-center font-semibold">{errorMessage}</p>
@@ -81,6 +73,7 @@ export default function LoginPage() {
             <label className="block text-gray-700 font-medium">Correo</label>
             <input
               type="email"
+              autoComplete="email"
               {...register("correo", { required: "El correo es obligatorio" })}
               className="w-full px-4 py-2 mt-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
               placeholder="Correo electrónico"
@@ -94,6 +87,7 @@ export default function LoginPage() {
             <label className="block text-gray-700 font-medium">Contraseña</label>
             <input
               type="password"
+              autoComplete="current-password"
               {...register("password", { required: "La contraseña es obligatoria" })}
               className="w-full px-4 py-2 mt-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
               placeholder="Contraseña"
@@ -113,12 +107,9 @@ export default function LoginPage() {
 
         <p className="text-sm text-center text-gray-600 mt-6">
           ¿No tienes cuenta?{" "}
-          <a
-            href="/register"
-            className="text-indigo-600 hover:text-indigo-700 font-semibold transition-all"
-          >
+          <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-semibold transition-all">
             Regístrate aquí
-          </a>
+          </Link>
         </p>
       </div>
     </div>

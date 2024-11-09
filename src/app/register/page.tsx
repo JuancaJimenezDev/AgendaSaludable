@@ -3,6 +3,7 @@
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Swal from "sweetalert2";
 
 type FormData = {
@@ -11,7 +12,7 @@ type FormData = {
   password: string;
 };
 
-function RegisterPage() {
+export default function RegisterPage() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>();
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
@@ -32,7 +33,6 @@ function RegisterPage() {
         return;
       }
 
-      // Successful registration
       Swal.fire("Éxito", "Usuario registrado exitosamente", "success").then(() => {
         router.push('/login');
       });
@@ -53,7 +53,7 @@ function RegisterPage() {
         {errorMessage && <p className="text-red-500 mb-4 text-center font-semibold">{errorMessage}</p>}
 
         <div className="mb-4">
-          <label htmlFor="nombre" className="text-gray-700 mb-2 block text-sm font-medium">Nombre</label>
+          <label className="text-gray-700 mb-2 block text-sm font-medium">Nombre</label>
           <input
             type="text"
             placeholder="Ingrese su nombre"
@@ -64,10 +64,11 @@ function RegisterPage() {
         </div>
 
         <div className="mb-4">
-          <label htmlFor="correo" className="text-gray-700 mb-2 block text-sm font-medium">Correo</label>
+          <label className="text-gray-700 mb-2 block text-sm font-medium">Correo</label>
           <input
             type="email"
             placeholder="Ingrese su correo"
+            autoComplete="email"
             {...register("correo", { required: 'El correo es obligatorio' })}
             className="p-3 rounded-lg block border border-gray-300 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
           />
@@ -75,10 +76,11 @@ function RegisterPage() {
         </div>
 
         <div className="mb-6">
-          <label htmlFor="password" className="text-gray-700 mb-2 block text-sm font-medium">Contraseña</label>
+          <label className="text-gray-700 mb-2 block text-sm font-medium">Contraseña</label>
           <input
             type="password"
             placeholder="Ingrese su contraseña"
+            autoComplete="new-password"
             {...register("password", { required: 'La contraseña es obligatoria' })}
             className="p-3 rounded-lg block border border-gray-300 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
           />
@@ -94,16 +96,11 @@ function RegisterPage() {
 
         <p className="text-sm text-center text-gray-600 mt-6">
           ¿Ya tienes una cuenta?{" "}
-          <a
-            href="/login"
-            className="text-indigo-600 hover:text-indigo-800 font-semibold transition-all"
-          >
+          <Link href="/login" className="text-indigo-600 hover:text-indigo-800 font-semibold transition-all">
             Inicia sesión
-          </a>
+          </Link>
         </p>
       </form>
     </div>
   );
 }
-
-export default RegisterPage;

@@ -22,15 +22,14 @@ export async function POST(request: Request) {
         // Genera el hash de la contraseña
         const hashedPassword = await bcrypt.hash(password, 10); // 10 es el valor recomendado para el salt
 
-        // Crea el usuario con el rol predeterminado "Cliente"
-        const newUser = await prisma.usuario.create({
+        await prisma.usuario.create({
             data: {
-                nombre,
-                correo,
-                contrasena: hashedPassword, // Guarda la contraseña encriptada
-                rol: 'Cliente', // Asigna el rol predeterminado como "Cliente"
+              nombre,
+              correo,
+              contrasena: hashedPassword,
+              rol: 'Cliente',
             },
-        });
+          });
 
         return new Response(JSON.stringify({ message: 'Usuario registrado exitosamente' }), { status: 201 });
     } catch (error) {

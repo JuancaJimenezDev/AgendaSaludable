@@ -1,5 +1,5 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -23,7 +23,6 @@ export default function CitasMedicoPage() {
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState<Disponibilidad | null>(null);
   const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Centralized token retrieval
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
@@ -32,29 +31,34 @@ export default function CitasMedicoPage() {
       return;
     }
 
-    // Fetch all availabilities for the doctor
     const fetchDisponibilidad = async () => {
+      if (!token) {
+        Swal.fire("Error", "No se encontró el token de autenticación", "error");
+        return;
+      }
       try {
         const res = await fetch("/api/disponibilidad", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.ok) {
-          const data = await res.json();
-          setDisponibilidad(Array.isArray(data) ? data : []);
+          const data: Disponibilidad[] = await res.json();
+          setDisponibilidad(data);
         } else {
           Swal.fire("Error", "Error al cargar disponibilidad", "error");
         }
-      } catch (error) {
-        Swal.fire("Error", "Hubo un problema al conectar con el servidor", "error");
+      } catch {
+        Swal.fire("Error", "Hubo un problema al intentar cargar la disponibilidad", "error");
       }
     };
 
     fetchDisponibilidad();
   }, [token]);
 
-  const handleEventClick = (eventClickInfo: any) => {
-    const selectedEvent = disponibilidad.find((item) => item.id === parseInt(eventClickInfo.event.id));
+  const handleEventClick = (eventClickInfo: { event: { id: string } }) => {
+    const selectedEvent = disponibilidad.find(
+      (item) => item.id === parseInt(eventClickInfo.event.id)
+    );
     if (selectedEvent) {
       setSelectedDisponibilidad(selectedEvent);
       setDialogOpen(true);
@@ -78,7 +82,7 @@ export default function CitasMedicoPage() {
         const data = await res.json();
         Swal.fire("Error", data.error || "Error al eliminar disponibilidad", "error");
       }
-    } catch (error) {
+    } catch {
       Swal.fire("Error", "Error de red al intentar eliminar disponibilidad", "error");
     }
   };

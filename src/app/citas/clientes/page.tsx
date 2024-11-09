@@ -1,14 +1,16 @@
-"use client";
-
+'use client'
 import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import { EventClickArg } from "@fullcalendar/core"; // Importar desde @fullcalendar/core
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem } from "@mui/material";
 import Swal from "sweetalert2";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { format } from "date-fns";
+import { useCallback } from "react";
+
 
 interface Disponibilidad {
   id: number;
@@ -37,9 +39,7 @@ export default function CitasClientePage() {
   const [selectedDisponibilidad, setSelectedDisponibilidad] = useState<Disponibilidad | null>(null);
   const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Centralized token retrieval
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
 
   useEffect(() => {
     if (!token) {
@@ -47,7 +47,6 @@ export default function CitasClientePage() {
       return;
     }
 
-    // Fetch specialties
     const fetchEspecialidades = async () => {
       try {
         const res = await fetch("/api/especialidades", {
@@ -55,41 +54,35 @@ export default function CitasClientePage() {
         });
         if (!res.ok) throw new Error("Error al obtener especialidades");
 
-        const data = await res.json();
+        const data: Especialidad[] = await res.json();
         setEspecialidades(data);
-      } catch (error: any) {
-        Swal.fire("Error", error.message || "Error desconocido", "error");
+      } catch (error: unknown) {
+        const err = error as Error;
+        Swal.fire("Error", err.message || "Error desconocido", "error");
       }
     };
     fetchEspecialidades();
   }, [token]);
 
   useEffect(() => {
-    // Fetch doctors based on selected specialty
     const fetchMedicos = async () => {
       if (selectedEspecialidad) {
         try {
           const res = await fetch(`/api/doctores?especialidadId=${selectedEspecialidad}`);
           if (!res.ok) throw new Error("Error al obtener médicos");
 
-          const data = await res.json();
+          const data: Medico[] = await res.json();
           setMedicos(data);
-        } catch (error: any) {
-          Swal.fire("Error", error.message || "Error desconocido", "error");
+        } catch (error: unknown) {
+          const err = error as Error;
+          Swal.fire("Error", err.message || "Error desconocido", "error");
         }
       }
     };
     fetchMedicos();
   }, [selectedEspecialidad]);
 
-  useEffect(() => {
-    // Fetch availability when a doctor is selected
-    if (selectedMedico) {
-      fetchDisponibilidad();
-    }
-  }, [selectedMedico]);
-
-  const fetchDisponibilidad = async () => {
+  const fetchDisponibilidad = useCallback(async () => {
     if (!token) {
       Swal.fire("Error", "No se encontró el token de autenticación", "error");
       return;
@@ -102,28 +95,36 @@ export default function CitasClientePage() {
       const res = await fetch(`/api/disponibilidad?medicoId=${selectedMedico}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+  
       if (res.ok) {
-        const data = await res.json();
-        console.log("Fetched disponibilidad data:", data); // Debugging log
-        setDisponibilidad(Array.isArray(data) ? data : []);
+        const data: Disponibilidad[] = await res.json();
+        setDisponibilidad(data);
       } else {
         Swal.fire("Error", "Error al cargar disponibilidad", "error");
       }
-    } catch (error) {
-      Swal.fire("Error", "Hubo un problema al conectar con el servidor", "error");
+    } catch (error: unknown) {
+      const err = error as Error;
+      Swal.fire("Error", err.message || "Error de red", "error");
     }
-  };
+  }, [token, selectedMedico]); // Añade token y selectedMedico como dependencias
+  
+  useEffect(() => {
+    if (selectedMedico) {
+      fetchDisponibilidad();
+    }
+  }, [selectedMedico, fetchDisponibilidad]);
 
-  const handleEventClick = (eventClickInfo: any) => {
-    const selectedEvent = disponibilidad.find((item) => item.id === parseInt(eventClickInfo.event.id));
+  const handleEventClick = (eventClickInfo: EventClickArg) => {
+    const selectedEvent = disponibilidad.find(
+       (item) => item.id === parseInt(eventClickInfo.event.id)
+    );
     if (selectedEvent && !selectedEvent.ocupada) {
-      setSelectedDisponibilidad(selectedEvent);
-      setDialogOpen(true);
+       setSelectedDisponibilidad(selectedEvent);
+       setDialogOpen(true);
     } else {
-      Swal.fire("Información", "Este horario ya ha sido reservado", "info");
+       Swal.fire("Información", "Este horario ya ha sido reservado", "info");
     }
-  };
+ };
 
   const handleAgendarCita = async () => {
     if (!selectedDisponibilidad || !token) return;
@@ -156,8 +157,9 @@ export default function CitasClientePage() {
       } else {
         Swal.fire("Error", "Error al agendar la cita", "error");
       }
-    } catch (error) {
-      Swal.fire("Error", "Error de red al intentar agendar la cita", "error");
+    } catch (error: unknown) {
+      const err = error as Error;
+      Swal.fire("Error", err.message || "Error de red al intentar agendar la cita", "error");
     }
   };
 

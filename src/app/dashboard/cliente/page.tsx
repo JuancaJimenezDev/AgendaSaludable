@@ -32,16 +32,17 @@ export default function ClienteDashboard() {
 
         const data: Cita[] = await res.json();
         setCitas(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        const error = err as Error;
+        setError(error.message);
         Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: err.message || "Error al obtener citas",
-          timer: 3000,
-          timerProgressBar: true,
+           icon: "error",
+           title: "Error",
+           text: error.message || "Error al obtener citas",
+           timer: 3000,
+           timerProgressBar: true,
         });
-      }
+     }     
     };
 
     fetchCitas();

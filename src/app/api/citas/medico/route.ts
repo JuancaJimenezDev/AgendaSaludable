@@ -4,10 +4,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Asegúrate de que esté bien configurado el cliente Prisma
 import { validarToken } from '@/utils/jwt'; // Para verificar el token de autenticación
 
+// Forzar que esta ruta se trate como dinámica en Next.js
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    if (!authHeader) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
 
     const token = authHeader.split(' ')[1];
     const payload = validarToken(token);

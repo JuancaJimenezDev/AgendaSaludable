@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+} from "@mui/material";
 import Swal from "sweetalert2";
 import { format } from "date-fns";
 
@@ -31,27 +38,28 @@ export default function DisponibilidadPage() {
       Swal.fire("Error", "No se encontró el token de autenticación", "error");
     }
   }, []);
-  
-  const fetchDisponibilidad = async (token: string) => {
+
+  const fetchDisponibilidad = async (token: string): Promise<void> => {
     try {
       const resDisponibilidad = await fetch("/api/disponibilidad", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (resDisponibilidad.ok) {
-        const data = await resDisponibilidad.json();
+        const data: Disponibilidad[] = await resDisponibilidad.json();
         setDisponibilidades(data); // Actualiza el estado con las disponibilidades obtenidas
       } else {
         const errorData = await resDisponibilidad.json();
         throw new Error(errorData.error || "Error al cargar disponibilidad");
       }
-    } catch (error: any) {
-      console.error("Error fetching disponibilidad:", error);
-      Swal.fire("Error", error.message || "Hubo un problema al conectar con el servidor", "error");
+    } catch (error) {
+      const err = error as Error;
+      console.error("Error fetching disponibilidad:", err);
+      Swal.fire("Error", err.message || "Hubo un problema al conectar con el servidor", "error");
     }
   };
 
-  const handleDateClick = (arg: any) => {
+  const handleDateClick = (arg: { dateStr: string }) => {
     setFecha(arg.dateStr);
     setDialogOpen(true);
   };
@@ -106,9 +114,10 @@ export default function DisponibilidadPage() {
         const errorData = await res.json();
         Swal.fire("Error", errorData.error || "Error al guardar disponibilidad", "error");
       }
-    } catch (error: any) {
-      Swal.fire("Error", error.message || "Hubo un problema al conectar con el servidor", "error");
-      console.error("Error al guardar disponibilidad:", error);
+    } catch (error) {
+      const err = error as Error;
+      Swal.fire("Error", err.message || "Hubo un problema al conectar con el servidor", "error");
+      console.error("Error al guardar disponibilidad:", err);
     }
   };
 
@@ -120,8 +129,14 @@ export default function DisponibilidadPage() {
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         events={disponibilidades.map((item) => {
-          const startDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaInicio), "HH:mm:ss")}`;
-          const endDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(new Date(item.horaFin), "HH:mm:ss")}`;
+          const startDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(
+            new Date(item.horaInicio),
+            "HH:mm:ss"
+          )}`;
+          const endDateTime = `${format(new Date(item.fecha), "yyyy-MM-dd")}T${format(
+            new Date(item.horaFin),
+            "HH:mm:ss"
+          )}`;
 
           return {
             id: item.id.toString(),

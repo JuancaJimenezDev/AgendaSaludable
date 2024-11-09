@@ -33,40 +33,36 @@ export default function MedicoCitas() {
       try {
         const citasRes = await fetch('/api/citas/medico', {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!citasRes.ok) throw new Error('Error al obtener las citas');
         const citasData: Cita[] = await citasRes.json();
         setCitas(citasData);
-
+  
         const disponibilidadRes = await fetch('/api/disponibilidad', {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         });
         if (!disponibilidadRes.ok) throw new Error('Error al obtener disponibilidades');
         const disponibilidadData: Disponibilidad[] = await disponibilidadRes.json();
         setDisponibilidades(disponibilidadData);
-      } catch (err: any) {
-        setError(err.message);
+  
+      } catch (err: unknown) {
+        const error = err as Error;
+        setError(error.message);
       }
     };
-
+  
     fetchData();
   }, []);
+  
 
   const handleCancelDisponibilidad = async (disponibilidadId: number) => {
     try {
       const res = await fetch(`/api/disponibilidad/${disponibilidadId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-    
       if (!res.ok) throw new Error('Error al cancelar la disponibilidad');
     
       Swal.fire({
@@ -78,7 +74,8 @@ export default function MedicoCitas() {
       });
     
       setDisponibilidades((prev) => prev.filter((disp) => disp.id !== disponibilidadId));
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -87,7 +84,8 @@ export default function MedicoCitas() {
         timerProgressBar: true,
       });
     }
-  };
+    };
+    
 
   return (
     <div className="max-w-4xl mx-auto mt-10 p-5 bg-white shadow-md rounded-lg">

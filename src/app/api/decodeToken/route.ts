@@ -1,10 +1,5 @@
 // src/app/api/decodeToken/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import jwt_decode from "jwt-decode"; // Importación sin {}
-
-interface DecodedToken {
-  rol: "Medico" | "Cliente" | "Administrador";
-}
 
 export async function POST(req: NextRequest) {
   const { token } = await req.json();

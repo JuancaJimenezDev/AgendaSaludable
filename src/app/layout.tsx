@@ -5,6 +5,7 @@ import React, { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
+import { useCallback } from "react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,33 +18,29 @@ export default function RootLayout({ children }: LayoutProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
-  // Función para verificar el token y el rol
-  const fetchRole = () => {
+
+  const fetchRole = useCallback(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("userRole") as UserRole | null;
-
+  
     if (token && storedRole) {
       setRole(storedRole);
-      setIsAuthenticated(true); // Marca al usuario como autenticado
+      setIsAuthenticated(true);
     } else {
       setRole(null);
       setIsAuthenticated(false);
-      router.push("/login"); // Redirige al login si no hay token o rol
+      router.push("/login");
     }
-  };
-
+  }, [router]);
+  
   useEffect(() => {
-    // Verificar el rol al cargar el componente
     fetchRole();
-
-    // Escuchar eventos de cambios en `localStorage`
     window.addEventListener("storage", fetchRole);
-
-    // Limpieza del evento al desmontar el componente
     return () => {
       window.removeEventListener("storage", fetchRole);
     };
-  }, [router]);
+  }, [fetchRole]);
+  
 
   return (
     <html lang="es">
